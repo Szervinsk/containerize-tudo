@@ -1,0 +1,27 @@
+FROM python:3.12-alpine
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    DJANGO_DEBUG=False
+
+# Instalação de biblioteca runtime do PostgreSQL (libpq)
+RUN apk add --no-cache libpq
+
+# Criação de usuário sem privilégios de root
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+WORKDIR /app
+
+# Instalação de dependências de produção
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Cópia do código-fonte e ajuste de permissões
+COPY . .
+RUN chown -R appuser:appgroup /app
+
+USER appuser
+
+EXPOSE 8000
+
+CMD ["gunicorn", "config.wsgi:application", "--bind", "0.0.0.0:8000"]

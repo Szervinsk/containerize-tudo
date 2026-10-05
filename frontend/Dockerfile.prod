@@ -1,0 +1,43 @@
+# Estágio 1: Dependências
+FROM node:20-alpine AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+COPY package*.json .npmrc* ./
+RUN npm ci --legacy-peer-deps
+
+# Estágio 2: Builder
+FROM node:20-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+RUN npm run build
+
+# Estágio 3: Runner de Produção (Alpine minimal com Node.js runtime para imagem < 150MB)
+FROM alpine:3.20 AS runner
+WORKDIR /app
+
+RUN apk add --no-cache nodejs
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Criação de usuário sem privilégios de root (nextjs)
+RUN addgroup --system --gid 1001 nodejs && \
+    adduser --system --uid 1001 nextjs
+
+# Cópia estrita apenas dos artefatos standalone e estáticos necessários
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+CMD ["node", "server.js"]
