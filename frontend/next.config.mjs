@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
+  skipTrailingSlashRedirect: true,
   async rewrites() {
     const backendUrl = process.env.INTERNAL_API_URL || 'http://localhost:8000';
     return [
