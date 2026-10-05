@@ -1,4 +1,4 @@
-name: CI Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
@@ -6,10 +6,14 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
   # ==========================================
   # TRILHA BACKEND
-  # lint-backend -> build-backend -> test-backend
+  # lint-backend -> build-backend -> test-backend -> deploy-backend
   # ==========================================
   lint-backend:
     name: Lint Backend (Ruff)
@@ -61,9 +65,33 @@ jobs:
       - name: Run Django Tests
         run: python backend/manage.py test config
 
+  deploy-backend:
+    name: Deploy Backend to GHCR
+    needs: test-backend
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Backend Production Image
+        run: |
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_NAME="ghcr.io/${OWNER_LOWER}/containerize-tudo-backend"
+          docker build -f backend/Dockerfile.prod -t "${IMAGE_NAME}:latest" -t "${IMAGE_NAME}:${{ github.sha }}" ./backend
+          docker push "${IMAGE_NAME}:latest"
+          docker push "${IMAGE_NAME}:${{ github.sha }}"
+
   # ==========================================
   # TRILHA FRONTEND
-  # lint-frontend -> build-frontend -> test-frontend
+  # lint-frontend -> build-frontend -> test-frontend -> deploy-frontend
   # ==========================================
   lint-frontend:
     name: Lint Frontend (ESLint)
@@ -126,3 +154,27 @@ jobs:
 
       - name: Run Vitest Tests
         run: npm --prefix frontend run test
+
+  deploy-frontend:
+    name: Deploy Frontend to GHCR
+    needs: test-frontend
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Frontend Production Image
+        run: |
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE_NAME="ghcr.io/${OWNER_LOWER}/containerize-tudo-frontend"
+          docker build -f frontend/Dockerfile.prod -t "${IMAGE_NAME}:latest" -t "${IMAGE_NAME}:${{ github.sha }}" ./frontend
+          docker push "${IMAGE_NAME}:latest"
+          docker push "${IMAGE_NAME}:${{ github.sha }}"
