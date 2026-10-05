@@ -26,3 +26,4 @@ nginx/certs/*.key
 .vscode/
 .idea/
 .DS_Store
+semana5.pdf
