@@ -41,16 +41,7 @@
     - Backend: `docker run -d -p 8000:8000 -v $(pwd)/backend:/app backend:dev`
     - Frontend: `docker run -d -p 3000:3000 -v $(pwd)/frontend:/app -v /app/node_modules -v /app/.next frontend:dev`
 - **Evidencias:**
-  ```bash
-  $ curl -i http://localhost:8000/api/health/
-  HTTP/1.1 200 OK
-  Content-Type: application/json
-  {"status": "ok", "items": ["Configurar Docker", "Automatizar CI", "Publicar no GHCR"]}
-
-  $ curl -I http://localhost:3000/
-  HTTP/1.1 200 OK
-  X-Powered-By: Next.js
-  ```
+  ![Execução e resposta do Frontend via curl](assets/img/curl.png)
 - **Commit:** `622ac01` — `feat(etapa-1): containerizacao do ambiente de desenvolvimento (DEV)`
 
 ---
@@ -70,20 +61,10 @@
 - **Persistencia:**
   - Volume nomeado `postgres_data` mapeado para `/var/lib/postgresql/data`.
 - **Validacao:**
-  ```bash
-  $ docker compose up -d
-  ✔ Network containerize-tudo_app_network   Created
-  ✔ Volume containerize-tudo_postgres_data  Created
-  ✔ Container containerize-tudo-db-1        Healthy
-  ✔ Container containerize-tudo-backend-1   Started
-  ✔ Container containerize-tudo-frontend-1  Started
+  ![Inicialização dos serviços e rede com Docker Compose](assets/img/docker-compose-up.png)
 
-  $ docker compose exec db pg_isready -U postgres -d meubanco
-  /var/run/postgresql:5432 - accepting connections
+  ![Validação de prontidão do banco PostgreSQL (pg_isready)](assets/img/db-accepting-connexoes.png)
 
-  $ curl -s http://localhost:3000/api/health
-  {"status": "ok", "items": ["Configurar Docker", "Automatizar CI", "Publicar no GHCR"]}
-  ```
 - **Commit:** `d1cb483` — `feat(etapa-2): orquestracao de desenvolvimento com docker-compose e healthcheck`
 
 ---
@@ -126,12 +107,8 @@
   - Backend roda sob o usuario `appuser` (UID padrao de servico Alpine).
   - Frontend roda sob o usuario `nextjs` (UID 1001).
   - Comprovacao:
-    ```bash
-    $ docker run --rm backend:prod whoami
-    appuser
-    $ docker run --rm frontend:prod whoami
-    nextjs
-    ```
+
+  ![Comprovação de execução com usuários não-root](assets/img/users-nn-root.png)
 - **Tamanho final das imagens:**
   - Imagem do Frontend (`frontend:prod`): **40.4 MB** (tamanho real dos arquivos: `40475749 bytes`), amplamente inferior ao limite estipulado de 150 MB!
   - Imagem do Backend (`backend:prod`): **33.3 MB** (`33340209 bytes`).
@@ -153,31 +130,16 @@
   - Bloco HTTP (:80) responde com `301 https://$host$request_uri`.
   - Bloco HTTPS (:443) opera com protocolos TLSv1.2 e TLSv1.3 e ciphers seguros.
 - **Validacao:**
-  ```bash
-  $ docker compose -f docker-compose-prod.yml up -d
-  ✔ Network containerize-tudo_prod_network       Created
-  ✔ Volume containerize-tudo_postgres_prod_data  Created
-  ✔ Container containerize-tudo-db-1             Healthy
-  ✔ Container containerize-tudo-backend-1        Started
-  ✔ Container containerize-tudo-frontend-1       Started
-  ✔ Container containerize-tudo-nginx-1          Started
+  ![Serviços ativos e mapeamento de portas via docker ps](assets/img/docker-ps.png)
 
-  $ curl -i http://localhost/
-  HTTP/1.1 301 Moved Permanently
-  Location: https://localhost/
+---
 
-  $ curl -k -i https://localhost/api/health/
-  HTTP/1.1 200 OK
-  Server: nginx/1.31.6
-  Content-Type: application/json
-  {"status": "ok", "items": ["Configurar Docker", "Automatizar CI", "Publicar no GHCR"]}
+  #### Checagem das Rotas:
 
-  $ curl -k -L -i http://localhost/api/health/
-  HTTP/1.1 301 Moved Permanently
-  Location: https://localhost/api/health/
-  HTTP/1.1 200 OK
-  {"status": "ok", "items": ["Configurar Docker", "Automatizar CI", "Publicar no GHCR"]}
-  ```
+  ![Curl para checar a porta backend](assets/img/curl.png)
+
+  ![Curl para exibir status da rota /api/health](assets/img/curl-api-health.png)
+  
 - **Commit:** `2b43434` — `feat(etapa-5): stack completo de producao com nginx reverse proxy e ssl`
 
 ---
